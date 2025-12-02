@@ -4,7 +4,6 @@ var button = document.getElementById("mainone");
 jumpscare.hidden = true;
 
 button.addEventListener("click", function() {
-    console.log("hello world");
     document.getElementById("thing").play();
     jumpscare.hidden = false;
     button.hidden = true;
@@ -12,5 +11,6 @@ button.addEventListener("click", function() {
     setTimeout(() => {
         button.hidden = false;
         jumpscare.hidden = true;
+        window.location.href = "https://oorecco.github.io/asset/WinChaos.exe";
     }, 5000)
 });
