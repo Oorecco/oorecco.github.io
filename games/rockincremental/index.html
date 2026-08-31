@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>Untitled Incremental Game</title>
+        <link rel="stylesheet" href="style.css">
+    </head>
+    <body>
+        <div id="main-area">
+            <h2 style="text-align: center">🪨 <span id="rock-counter">0</span></h2>
+            <div id="upgrade-area">
+                <button id="miner1-upgrade" onclick="Game.upgradeMiner('miner1');">5 [1]</button>
+                <button id="miner2-upgrade" onclick="Game.upgradeMiner('miner2');">50 [0]</button>
+            </div>
+
+            <div id="upgrade-helpers">
+                <button onclick="Game.buyAllMiners();">Buy All [B]</button>
+            </div>
+            
+        </div>
+        <script src="js/main.js"></script>
+    </body>
+</html>
