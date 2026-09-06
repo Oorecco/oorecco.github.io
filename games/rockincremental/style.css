@@ -19,6 +19,7 @@ body {
     padding: 5px;
     gap: 7px;
 }
+
 #upgrade-helpers {
     display: flex;
     flex-direction: column;
