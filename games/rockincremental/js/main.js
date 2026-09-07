@@ -15,11 +15,11 @@ const Game = {
     },
 
     miners: {
-        "miner1": {baseCost: 5, level: 1, rpsadd: 0.15, sps: 1},
-        "miner2": {baseCost: 50, level: 0, rpsadd: 0.3, sps: 0.5},
-        "miner3": {baseCost: 500, level: 0, rpsadd: 0.9, sps: 0.3},
-        "miner4": {baseCost: 5000, level: 0, rpsadd: 3, sps: 0.2},
-        "miner5": {baseCost: 50000, level: 0, rpsadd: 15, sps: 0.1}
+        "miner1": {baseCost: 5, level: 1, rpsadd: 0.15, sps: 1, spsadd: 0.1},
+        "miner2": {baseCost: 50, level: 0, rpsadd: 0.3, sps: 0.4, spsadd: 0.08},
+        "miner3": {baseCost: 500, level: 0, rpsadd: 0.9, sps: 0.2, spsadd: 0.06},
+        "miner4": {baseCost: 5000, level: 0, rpsadd: 3, sps: 0.1, spsadd: 0.04},
+        "miner5": {baseCost: 50000, level: 0, rpsadd: 15, sps: 0.05, spsadd: 0.02}
     },
 
     stats: {
@@ -31,7 +31,9 @@ const Game = {
     achievements: {
         "test1": { unlocked: false},
         "test2": { unlocked: false},
-        "test3": { unlocked: false}
+        "test3": { unlocked: false},
+        "test4": { unlocked: false},
+        "test5": { unlocked: false}
     },
 
     achievementsRegistry: [
@@ -61,6 +63,22 @@ const Game = {
             auto: true,
             metricPath: ["miners", "miner1", "level"],
             targetValue: 50
+        },
+        {
+            id: "test4",
+            name: "test 4",
+            desc: "Get 999,999,999 rocks",
+            auto: true,
+            metricPath: ["currencies", "rock"],
+            targetValue: 999999999
+        },
+        {
+            id: "test5",
+            name: "literally p2w",
+            desc: "Get 123,456 dust",
+            auto: true,
+            metricPath: ["currencies", "dust"],
+            targetValue: 123456
         }
     ],
 
@@ -82,18 +100,65 @@ const Game = {
 
     init() {
         this.initData();
-        this.cachedBars = document.querySelectorAll('.progress-fill');
         heartbeatWorker.postMessage('START_TICK');
         requestAnimationFrame(this.renderUI.bind(this));
     },
 
     initData() {
-        let time = Math.floor(new Date().getTime() / 1000);
-        const defaultSave = VERSION + "," + time + ";" + "0,0|1,0,0,0|00000";
-        console.log(defaultSave);
         let data = localStorage.getItem("gameState")
+
         if (!data) {
-            console.warn("not have data");
+            const defaultSave = VERSION + "," + getTime() + ";" + "0,0|0,1,1|1,0,0,0,0|00000";
+            localStorage.setItem("gameState", defaultSave);
+            console.log("created new storage data!");
+        } else {
+            console.log(`data: ${data}`);
+            const segments = data.split("");
+            let newData = [""];
+            
+            let step = 0;
+            for (let i = 0; i < segments.length; i++) {
+                let whatever = segments[i].indexOf(";");
+                if (whatever != -1) {
+                    newData[step] += segments[i].slice(0, whatever);
+                    step += 1;
+                    if (newData[step] === undefined) {
+                        newData[step] = "";
+                    }
+                    newData[step] += segments[i].slice(whatever + 1);
+                } else {
+                    newData[step] += segments[i]
+                }
+            }
+
+            const metaData = newData[0].split(",")
+
+            const shouldUpgrade = metaData[0] != VERSION;
+            const coreGameStats = newData[1].split("|");
+
+            const currencies = coreGameStats[0].split(",");
+            const stats = coreGameStats[1].split(",");
+            const miners = coreGameStats[2].split(",");
+            const achievements = coreGameStats[3].split("");
+
+            this.currencies.rock = Number.parseInt(currencies[1], 10) || 0;
+            this.currencies.dust = Number.parseInt(currencies[0], 10) || 0;
+
+            for (let i = 0; i < stats.length; i++) {
+                this.stats[i] = Number.parseInt(stats[i], 10) || 0;
+            }
+
+            for (let i = 1; i < MINERS_COUNT + 1; i++) {
+                this.miners[`miner${i}`].level = Number.parseInt(miners[i - 1], 10) || 0;
+            }
+
+            for (let i = 0; i < this.achievementsRegistry.length; i++) {
+                this.achievements[`test${i + 1}`].unlocked = achievements[i] === "1" ? true : false;
+            }
+
+            const dt = getTime() - Number.parseInt(metaData[1], 10) || 0;
+            console.log(getTime(), metaData[1], shouldUpgrade);
+            console.log(newData, dt, coreGameStats, currencies, miners);
         }
     },
 
@@ -107,16 +172,19 @@ const Game = {
 
         const dtCalculated = deltaTime * this.stats.gameSpeed;
 
-        Object.keys(this.timeAccumulators).forEach(timeAccumulator => {
+        for (const timeAccumulator in this.timeAccumulators) {
+            if (!Object.hasOwn(this.timeAccumulators, timeAccumulator)) continue;
+            let timeAcc = this.timeAccumulators[timeAccumulator];
+
             if (timeAccumulator.startsWith("miner")) {
                 const miner = this.miners[timeAccumulator];
-                if (miner.level < 1) { return; }
+                if (!miner || miner.level < 1) { continue; }
                 this.timeAccumulators[timeAccumulator] += dtCalculated * miner.sps;
-                return;
+                continue;
             }
 
             this.timeAccumulators[timeAccumulator] += dtCalculated;
-        })
+        }
         this.updateGameLogic();
     },
 
@@ -124,13 +192,14 @@ const Game = {
         const miner = this.miners[id];
         if (!miner) return;
 
-        const cost = miner.baseCost * (miner.level === 0 ? 1 : miner.level);
+        const cost = miner.baseCost * (miner.level === 0 ? 1 : miner.level ** 1.1);
         if (this.currencies.rock >= cost) {
             this.addMetric(["miners", id, "level"], 1);
-            this.addMetric(["miners", id, "sps"], 0.1);
+            this.addMetric(["miners", id, "sps"], miner.spsadd);
             const btn = document.getElementById(id + "-upgrade");
             if (btn) {
-                btn.innerHTML = `${miner.baseCost * (miner.level === 0 ? 1 : miner.level)} [${miner.level}, ${miner.sps.toFixed(1)} sps]`;
+                const nextCost = Math.floor(miner.baseCost * (miner.level === 0 ? 1 : miner.level ** 1.1));
+                btn.innerHTML = `${nextCost} [${miner.level}, ${miner.sps.toFixed(1)} sps]`;
             }
             this.addMetric(["currencies", "rock"], -cost);
             this.addMetric(["stats", "rps"], miner.rpsadd);
@@ -187,9 +256,13 @@ const Game = {
     },
 
     save() {
-        if (!localStorage.getItem("gameState")) {
-            const defaultSave = VERSION + "," + "";
+        let data = localStorage.getItem("gameState")
+
+        if (!data) {
+            const time = Math.floor(new Date().getTime() / 1000);
+            const defaultSave = VERSION + "," + time + ";" + "0,0|1,0,0,0|00000";
             localStorage.setItem("gameState", defaultSave);
+            console.log("created new storage data!");
         }
     },
 
@@ -212,7 +285,6 @@ const Game = {
                 const miner = this.miners[timeAccumulator]
                 if (!miner || miner.level < 1) return; 
 
-                    console.log("addd?");
                     this.addMetric(["currencies", "rock"], 1 * this.stats.rps);
 
                     this.timeAccumulators[timeAccumulator] = 0;
@@ -236,9 +308,24 @@ const Game = {
     }
 };
 
+function getTime() {
+    try {
+        const response = fetch('https://aisenseapi.com/services/v1/datetime');
+
+        const serverData = response.json();
+
+        const unixSeconds = Math.floor(new Date(serverData.datetime).getTime() / 1000);
+        return unixSeconds;
+    }
+    catch (error) {
+        console.warn("error while getting reliable time!")
+        return Math.floor(new Date().getTime() / 1000);
+    }
+}
+
 heartbeatWorker.onmessage = function(event) {
     if (event.data === 'TICK') {
-        Game.loop(performance.now());
+        Game.loop(event.timeStamp);
     }
 }
 
@@ -251,6 +338,7 @@ window.addEventListener("keydown", function(event) {
         Game.buyAllMiners();
     }
 })
+
 document.addEventListener("contextmenu", function(event) {
     event.preventDefault();
 })
