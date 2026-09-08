@@ -1,9 +1,13 @@
 // CONSTANTS
 const VERSION = "v0.01";
+const AUTOSAVE_TIME = (30 * 1000);
 const MINERS_COUNT = 5;
+
+let saveDebounce = false;
 
 // ELEMENTS
 const rock_count = document.getElementById("rock-counter")
+const bulk_count = document.getElementById("bulk-counter");
 
 // OTHER THINGS
 const heartbeatWorker = new Worker('js/worker.js');
@@ -15,11 +19,19 @@ const Game = {
     },
 
     miners: {
-        "miner1": {baseCost: 5, level: 1, rpsadd: 0.15, sps: 1, spsadd: 0.1},
-        "miner2": {baseCost: 50, level: 0, rpsadd: 0.3, sps: 0.4, spsadd: 0.08},
-        "miner3": {baseCost: 500, level: 0, rpsadd: 0.9, sps: 0.2, spsadd: 0.06},
-        "miner4": {baseCost: 5000, level: 0, rpsadd: 3, sps: 0.1, spsadd: 0.04},
-        "miner5": {baseCost: 50000, level: 0, rpsadd: 15, sps: 0.05, spsadd: 0.02}
+        "miner1": {baseCost: 10, level: 1, rpsadd: 0.12, sps: 1, spsadd: 0.1},
+        "miner2": {baseCost: 150, level: 0, rpsadd: 0.35, sps: 0.5, spsadd: 0.08},
+        "miner3": {baseCost: 5000, level: 0, rpsadd: 1, sps: 0.25, spsadd: 0.06},
+        "miner4": {baseCost: 20000, level: 0, rpsadd: 3.2, sps: 0.1, spsadd: 0.04},
+        "miner5": {baseCost: 100000, level: 0, rpsadd: 20, sps: 0.05, spsadd: 0.02}
+    },
+
+    cachedMiner: {
+        "miner1": {baseCost: 10, level: 1, rpsadd: 0.12, sps: 1, spsadd: 0.1},
+        "miner2": {baseCost: 150, level: 0, rpsadd: 0.35, sps: 0.5, spsadd: 0.08},
+        "miner3": {baseCost: 5000, level: 0, rpsadd: 1, sps: 0.25, spsadd: 0.06},
+        "miner4": {baseCost: 20000, level: 0, rpsadd: 3.2, sps: 0.1, spsadd: 0.04},
+        "miner5": {baseCost: 100000, level: 0, rpsadd: 20, sps: 0.05, spsadd: 0.02}
     },
 
     stats: {
@@ -93,12 +105,16 @@ const Game = {
         miner2: 0,
         miner3: 0,
         miner4: 0,
-        miner5: 0
+        miner5: 0,
+        autoSave: 0
     },
+
+    bulkCount: 1,
 
     lastTick: performance.now(),
 
     init() {
+        console.log(this.cachedMiner);
         this.initData();
         heartbeatWorker.postMessage('START_TICK');
         requestAnimationFrame(this.renderUI.bind(this));
@@ -134,22 +150,35 @@ const Game = {
             const metaData = newData[0].split(",")
 
             const shouldUpgrade = metaData[0] != VERSION;
+
+            if (shouldUpgrade) {
+                Game.save();
+                Game.initData();
+                return;
+            }
             const coreGameStats = newData[1].split("|");
 
             const currencies = coreGameStats[0].split(",");
             const stats = coreGameStats[1].split(",");
             const miners = coreGameStats[2].split(",");
+            console.log(coreGameStats);
             const achievements = coreGameStats[3].split("");
 
             this.currencies.rock = Number.parseInt(currencies[1], 10) || 0;
             this.currencies.dust = Number.parseInt(currencies[0], 10) || 0;
 
+            const statsDataList = Object.keys(this.stats || {});
+
             for (let i = 0; i < stats.length; i++) {
-                this.stats[i] = Number.parseInt(stats[i], 10) || 0;
+                this.stats[statsDataList[i]] = Number.parseInt(stats[i], 10) || 0;
             }
 
             for (let i = 1; i < MINERS_COUNT + 1; i++) {
-                this.miners[`miner${i}`].level = Number.parseInt(miners[i - 1], 10) || 0;
+                const miner = this.miners[`miner${i}`];
+                miner.level = Number.parseInt(miners[i - 1], 10) || 0;
+                if (miner.sps < miner.spsadd * miner.level) {
+                    miner.sps = miner.level * miner.spsadd
+                };
             }
 
             for (let i = 0; i < this.achievementsRegistry.length; i++) {
@@ -157,8 +186,6 @@ const Game = {
             }
 
             const dt = getTime() - Number.parseInt(metaData[1], 10) || 0;
-            console.log(getTime(), metaData[1], shouldUpgrade);
-            console.log(newData, dt, coreGameStats, currencies, miners);
         }
     },
 
@@ -183,35 +210,76 @@ const Game = {
                 continue;
             }
 
-            this.timeAccumulators[timeAccumulator] += dtCalculated;
+            if (timeAccumulator === "autoSave") {
+                this.timeAccumulators[timeAccumulator] += deltaTime;
+            } else {
+                this.timeAccumulators[timeAccumulator] += dtCalculated;
+            }
         }
         this.updateGameLogic();
     },
 
-    upgradeMiner(id) {
+    changeBulk() {
+        switch (this.bulkCount) {
+            case 1:
+                this.bulkCount = 5;
+                break;
+            case 5:
+                this.bulkCount = 10;
+                break;
+            case 10:
+                this.bulkCount = 25;
+                break;
+            case 25:
+                this.bulkCount = 50;
+                break;
+            case 50:
+                this.bulkCount = 100;
+                break;
+            case 100:
+                this.bulkCount = Infinity;
+                break;
+            case Infinity:
+                this.bulkCount = 1;
+                break;
+        }
+    },
+
+    upgradeMiner(id, count) {
         const miner = this.miners[id];
         if (!miner) return;
+        let tempLevel = miner.level;
+        let cost = 0;
+        let tempCost = 0;
+        let addLevel = 0;
 
-        const cost = miner.baseCost * (miner.level === 0 ? 1 : miner.level ** 1.1);
+        for (let i = 0; i < count; i++) {
+            tempCost = miner.baseCost * (tempLevel === 0 ? 1 : tempLevel ** 1.1);
+            if (this.currencies.rock <= cost + tempCost) { break; }
+            cost += tempCost;
+            tempLevel++;
+            addLevel++;
+        }
+
         if (this.currencies.rock >= cost) {
-            this.addMetric(["miners", id, "level"], 1);
-            this.addMetric(["miners", id, "sps"], miner.spsadd);
-            const btn = document.getElementById(id + "-upgrade");
-            if (btn) {
-                const nextCost = Math.floor(miner.baseCost * (miner.level === 0 ? 1 : miner.level ** 1.1));
-                btn.innerHTML = `${nextCost} [${miner.level}, ${miner.sps.toFixed(1)} sps]`;
-            }
+            this.addMetric(["miners", id, "level"], addLevel);
+            this.addMetric(["miners", id, "sps"], miner.spsadd * addLevel);
             this.addMetric(["currencies", "rock"], -cost);
-            this.addMetric(["stats", "rps"], miner.rpsadd);
+            this.addMetric(["stats", "rps"], miner.rpsadd * addLevel);
         }
     },
 
     buyAllMiners() {
         for (let i = 0; i < MINERS_COUNT + 1; i++) {
-            this.upgradeMiner(`miner${i}`);
+            this.upgradeMiner(`miner${i}`, this.bulkCount);
         }
     },
 
+    resetSave() {
+        localStorage.clear();
+        this.initData();
+        this.initData();
+    },
     addMetric(arrayPath, amount) {
         let current = this;
 
@@ -259,10 +327,39 @@ const Game = {
         let data = localStorage.getItem("gameState")
 
         if (!data) {
-            const time = Math.floor(new Date().getTime() / 1000);
-            const defaultSave = VERSION + "," + time + ";" + "0,0|1,0,0,0|00000";
+            const defaultSave = VERSION + "," + getTime() + ";" + "0,0|0,1,1|1,0,0,0,0|00000";
             localStorage.setItem("gameState", defaultSave);
             console.log("created new storage data!");
+        } else {
+            console.log("saving...");
+            let saveData = VERSION + "," + getTime() + ";";
+
+            const currenciesDataList = Object.values(this.currencies || {});
+            const statsDataList = Object.values(this.stats || {});
+            const minerDataList = Object.values(this.miners || {});
+            const achievementDataList = Object.values(this.achievements || {}); 
+            
+            for (let i = 0; i < currenciesDataList.length; i++) {
+                saveData += currenciesDataList[i].toFixed(0);
+                saveData += i != currenciesDataList.length - 1 ? "," : "|";
+            }
+
+            for (let i = 0; i < statsDataList.length; i++) {
+                saveData += statsDataList[i].toString(10);
+                saveData += i != statsDataList.length - 1 ? "," : "|";
+            }
+
+            for (let i = 0; i < minerDataList.length; i++) {
+                saveData += minerDataList[i]?.level.toString(10);
+                saveData += i != minerDataList.length - 1 ? "," : "|";
+            }
+
+            for (let i = 0; i < achievementDataList.length; i++) {
+                saveData += achievementDataList[i]?.unlocked === true ? 1 : 0;
+                // saveData += i != this.achievementsRegistry.length - 1 ? "" : "" 
+            }
+
+            localStorage.setItem("gameState", saveData);
         }
     },
 
@@ -295,6 +392,10 @@ const Game = {
                 case "timePlayed":
                     this.addMetric(["stats", "timePlayed"], 1);
                     break;
+                case "autoSave":
+                    if (timeAcc < AUTOSAVE_TIME) continue;
+                    this.save();
+                    break;
             }
 
             this.timeAccumulators[timeAccumulator] = 0;
@@ -302,7 +403,17 @@ const Game = {
     },
 
     renderUI() {
-        rock_count.innerHTML = Math.floor(this.currencies.rock);
+        for (let i = 0; i < MINERS_COUNT; i++) {
+            const miner = this.miners[`miner${i + 1}`];
+            const btn = document.getElementById(`miner${i + 1}` + "-upgrade");
+            if (btn) {
+                const nextCost = Math.floor(miner.baseCost * (miner.level === 0 ? 1 : miner.level ** 1.1));
+                btn.innerHTML = `${slopify(nextCost)} [${miner.level}, ${miner.sps.toFixed(2)} sps]`;
+            }
+        }
+        
+        rock_count.innerHTML = slopify(Math.floor(this.currencies.rock));
+        bulk_count.innerHTML = this.bulkCount === Infinity ? "Max" : this.bulkCount;
 
         requestAnimationFrame(this.renderUI.bind(this));
     }
@@ -323,6 +434,19 @@ function getTime() {
     }
 }
 
+function slopify(num) {
+    if (num < 1000) return num.toString();
+    const suffixes = ["", "K", "M", "B", "T", "Qd", "Qn", "Sx"];
+    const tier = Math.floor(Math.log10(num) / 3);
+
+    const i = Math.min(tier, suffixes.length - 1);
+
+    const scale = Math.pow(10, i * 3);
+    const formatted = num / scale;
+
+    return formatted.toFixed(2).replace("/\.0$/", "") + suffixes[i];
+}
+
 heartbeatWorker.onmessage = function(event) {
     if (event.data === 'TICK') {
         Game.loop(event.timeStamp);
@@ -331,14 +455,33 @@ heartbeatWorker.onmessage = function(event) {
 
 document.addEventListener("DOMContentLoaded", () => {
     Game.init();
-})
+});
+
+const Sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 window.addEventListener("keydown", function(event) {
+    if ((event.ctrlKey || event.metaKey) && (event.key.toLowerCase() == 's')) {
+        if (saveDebounce) return;
+        saveDebounce = true;
+
+        event.preventDefault();
+        Game.save();
+
+        Sleep(1000);
+        
+        saveDebounce = false;
+    }
     if (event.key.toLowerCase() === "b") {
         Game.buyAllMiners();
     }
-})
+});
 
 document.addEventListener("contextmenu", function(event) {
     event.preventDefault();
-})
+});
+
+document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") {
+        Game.save() // just incase.
+    }
+});

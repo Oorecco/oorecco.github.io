@@ -4,6 +4,7 @@ function handleclick() {
     if (a === NaN || b === NaN) { alert("Input must be a number!"); return; }
 
     let res = Math.hypot(a, b);
+    if (res === NaN) { alert("Input must be a number!"); return; }
     c_text.innerHTML = `c = ${res}`;
 }
 
@@ -15,5 +16,11 @@ function anotherClick() {
     if (m1 === NaN || m2 === NaN || r === NaN) { alert("Input must be a number!"); return; }
 
     let res = G_CONST * ((m1 * m2) / (r ** 2));
+    if (res === NaN) { alert("Input must be a number!"); return; }
     f_text.innerHTML = `F = ${res}`; 
+}
+
+function againClick() {
+    const pi_text = document.getElementById("pi-text");
+    
 }

@@ -21,3 +21,7 @@ Update 2 [v2026.9.7]:
 - TODO: need save() functionality. loadSave is already done.
 - TODO: add proper html layout in /tools
 - TODO: add more gameplay contents and balancing.
+
+Update 3 [v2026.9.8]:
+- A lot of things have changed [maybe not that a lot]
+- More changelogs on the diff source code.

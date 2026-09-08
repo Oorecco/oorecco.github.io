@@ -7,17 +7,21 @@
         <link rel="stylesheet" href="style.css">
     </head>
     <body>
+        <div id="loading-screen">
+
+        </div>
         <div id="main-area">
             <h2 style="text-align: center">🪨 <span id="rock-counter">0</span></h2>
             <div id="upgrade-area">
-                <button id="miner1-upgrade" onclick="Game.upgradeMiner('miner1');">5 [1, 1.0 sps]</button>
-                <button id="miner2-upgrade" onclick="Game.upgradeMiner('miner2');">50 [0, 0.4 sps]</button>
-                <button id="miner3-upgrade" onclick="Game.upgradeMiner('miner3');">500 [0, 0.2 sps]</button>
-                <button id="miner4-upgrade" onclick="Game.upgradeMiner('miner4');">5000 [0, 0.1 sps]</button>
-                <button id="miner5-upgrade" onclick="Game.upgradeMiner('miner5');">5000 [0, 0.05 sps]</button>
+                <button id="miner1-upgrade" onclick="Game.upgradeMiner('miner1', Game.bulkCount);">5 [1, 1.0 sps]</button>
+                <button id="miner2-upgrade" onclick="Game.upgradeMiner('miner2', Game.bulkCount);">50 [0, 0.4 sps]</button>
+                <button id="miner3-upgrade" onclick="Game.upgradeMiner('miner3', Game.bulkCount);">500 [0, 0.2 sps]</button>
+                <button id="miner4-upgrade" onclick="Game.upgradeMiner('miner4', Game.bulkCount);">5000 [0, 0.1 sps]</button>
+                <button id="miner5-upgrade" onclick="Game.upgradeMiner('miner5', Game.bulkCount);">5000 [0, 0.05 sps]</button>
             </div>
 
             <div id="upgrade-helpers">
+                <button id="bulk-counter" onclick="Game.changeBulk();">1</button>
                 <button onclick="Game.buyAllMiners();">Buy All [B]</button>
             </div>
             

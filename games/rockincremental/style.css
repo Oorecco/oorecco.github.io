@@ -19,6 +19,15 @@ body {
     padding: 5px;
     gap: 7px;
 }
+
+#loading-screen {
+    min-width: 100%;
+    min-height: 100%;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(1,1,1,1);
+    z-index: 99999999;
+}
 #upgrade-helpers {
     display: flex;
     flex-direction: column;
