@@ -4,13 +4,23 @@ const AUTOSAVE_TIME = (30 * 1000);
 const MINERS_COUNT = 5;
 
 let saveDebounce = false;
+let isLoaded = false;
 
 // ELEMENTS
 const rock_count = document.getElementById("rock-counter")
 const bulk_count = document.getElementById("bulk-counter");
+const loading_screen = document.getElementById("loading-screen");
+const loading_text = document.getElementById("loading-text");
+const loading_save = document.getElementById("loading-save");
+const versionText = document.getElementById("version");
 
 // OTHER THINGS
 const heartbeatWorker = new Worker('js/worker.js');
+const bgMusic = new Audio('../../assets/rockincremental/bgMusic.mp3');
+
+bgMusic.volume = 0.8;
+bgMusic.preload = 'auto';
+bgMusic.loop = true;
 
 const Game = {
     currencies: {
@@ -113,18 +123,30 @@ const Game = {
 
     lastTick: performance.now(),
 
-    init() {
-        console.log(this.cachedMiner);
-        this.initData();
-        heartbeatWorker.postMessage('START_TICK');
-        requestAnimationFrame(this.renderUI.bind(this));
+    async init() {
+        versionText.innerHTML = VERSION;
+        let step = 0;
+        while (document.readyState != 'complete') {
+            console.log("on");
+            step++;
+            
+            loading_text.innerHTML += ".";
+            if (step === 3) {
+                step = 0;
+                loading_text.innerHTML = "Loading";
+            }
+            await Sleep(1000);
+        }
+
+        isLoaded = true;
     },
 
-    initData() {
+    async initData() {
         let data = localStorage.getItem("gameState")
 
         if (!data) {
-            const defaultSave = VERSION + "," + getTime() + ";" + "0,0|0,1,1|1,0,0,0,0|00000";
+            const time = await getTime();
+            const defaultSave = VERSION + "," + time + ";" + "0,0|0,1,1|1,0,0,0,0|00000";
             localStorage.setItem("gameState", defaultSave);
             console.log("created new storage data!");
         } else {
@@ -220,29 +242,9 @@ const Game = {
     },
 
     changeBulk() {
-        switch (this.bulkCount) {
-            case 1:
-                this.bulkCount = 5;
-                break;
-            case 5:
-                this.bulkCount = 10;
-                break;
-            case 10:
-                this.bulkCount = 25;
-                break;
-            case 25:
-                this.bulkCount = 50;
-                break;
-            case 50:
-                this.bulkCount = 100;
-                break;
-            case 100:
-                this.bulkCount = Infinity;
-                break;
-            case Infinity:
-                this.bulkCount = 1;
-                break;
-        }
+        const tier = [1, 5, 10, 25, 50, 100, Infinity];
+        const i = tier.indexOf(this.bulkCount);
+        this.bulkCount = tier[i === tier.length - 1 ? 0 : i + 1];
     },
 
     upgradeMiner(id, count) {
@@ -323,16 +325,17 @@ const Game = {
         })
     },
 
-    save() {
+    async save() {
         let data = localStorage.getItem("gameState")
+        let time = await getTime();
 
         if (!data) {
-            const defaultSave = VERSION + "," + getTime() + ";" + "0,0|0,1,1|1,0,0,0,0|00000";
+            const defaultSave = VERSION + "," + time + ";" + "0,0|0,1,1|1,0,0,0,0|00000";
             localStorage.setItem("gameState", defaultSave);
             console.log("created new storage data!");
         } else {
             console.log("saving...");
-            let saveData = VERSION + "," + getTime() + ";";
+            let saveData = VERSION + "," + time + ";";
 
             const currenciesDataList = Object.values(this.currencies || {});
             const statsDataList = Object.values(this.stats || {});
@@ -345,7 +348,7 @@ const Game = {
             }
 
             for (let i = 0; i < statsDataList.length; i++) {
-                saveData += statsDataList[i].toString(10);
+                saveData += Math.floor(statsDataList[i].toString(10));
                 saveData += i != statsDataList.length - 1 ? "," : "|";
             }
 
@@ -419,13 +422,14 @@ const Game = {
     }
 };
 
-function getTime() {
+async function getTime() {
     try {
-        const response = fetch('https://aisenseapi.com/services/v1/datetime');
+        const response = await fetch('https://aisenseapi.com/services/v1/datetime');
 
-        const serverData = response.json();
+        const serverData = await response.json();
 
         const unixSeconds = Math.floor(new Date(serverData.datetime).getTime() / 1000);
+        console.log(unixSeconds);
         return unixSeconds;
     }
     catch (error) {
@@ -453,12 +457,28 @@ heartbeatWorker.onmessage = function(event) {
     }
 }
 
-document.addEventListener("DOMContentLoaded", () => {
-    Game.init();
-});
-
 const Sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+const randomSleep = (min, max) => {
+    const delay = Math.floor(Math.random() * (max - min + 1)) + min;
+    return new Promise(resolve => setTimeout(resolve, delay));
+};
+
+loading_screen.addEventListener("click", async function (event){
+    if (!isLoaded) return;
+
+    bgMusic.play();
+
+    loading_screen.hidden = true;
+    loading_save.hidden = false;
+    
+    await randomSleep(750, 2000);
+    Game.initData();
+    heartbeatWorker.postMessage('START_TICK')
+    requestAnimationFrame(Game.renderUI.bind(Game));
+    loading_save.hidden = true;
+
+})
 window.addEventListener("keydown", function(event) {
     if ((event.ctrlKey || event.metaKey) && (event.key.toLowerCase() == 's')) {
         if (saveDebounce) return;
@@ -485,3 +505,5 @@ document.addEventListener("visibilitychange", () => {
         Game.save() // just incase.
     }
 });
+
+Game.init();

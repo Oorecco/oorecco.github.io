@@ -25,3 +25,7 @@ Update 2 [v2026.9.7]:
 Update 3 [v2026.9.8]:
 - A lot of things have changed [maybe not that a lot]
 - More changelogs on the diff source code.
+
+Update 4 [v2026.9.13]:
+- A LOT of thing have changed.
+- More changelogs on the diff source code.
