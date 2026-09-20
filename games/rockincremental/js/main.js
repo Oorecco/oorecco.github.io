@@ -5,6 +5,7 @@ const MINERS_COUNT = 5;
 
 let saveDebounce = false;
 let isLoaded = false;
+let secureTimeOrigin = null;
 
 // ELEMENTS
 const rock_count = document.getElementById("rock-counter")
@@ -65,7 +66,9 @@ const Game = {
             desc: "literally just a test",
             auto: true,
             metricPath: ["currencies", "rock"],
-            targetValue: 10
+            targetValue: 10,
+            rewardMetricPath: ["currencies", "dust"],
+            rewardValue: "add 50"
         },
         {
             id: "test2",
@@ -76,7 +79,9 @@ const Game = {
                 const date = new Date();
                 let Hours = date.getHours();
                 return Hours >= 20 && Hours <= 23;
-            }
+            },
+            rewardMetricPath: ["currencies", "dust"],
+            rewardValue: "add 100"
         },
         {
             id: "test3",
@@ -84,7 +89,9 @@ const Game = {
             desc: "Get 50 miner1.",
             auto: true,
             metricPath: ["miners", "miner1", "level"],
-            targetValue: 50
+            targetValue: 50,
+            rewardMetricPath: ["stats", "gameSpeed"],
+            rewardValue: "mult 1.5"
         },
         {
             id: "test4",
@@ -92,7 +99,10 @@ const Game = {
             desc: "Get 999,999,999 rocks",
             auto: true,
             metricPath: ["currencies", "rock"],
-            targetValue: 999999999
+            targetValue: 999999999,
+            customReward: function() {
+                
+            }
         },
         {
             id: "test5",
@@ -100,7 +110,9 @@ const Game = {
             desc: "Get 123,456 dust",
             auto: true,
             metricPath: ["currencies", "dust"],
-            targetValue: 123456
+            targetValue: 123456,
+            rewardMetricPath: ["currencies", "dust"],
+            rewardValue: 50
         }
     ],
 
@@ -125,6 +137,7 @@ const Game = {
 
     async init() {
         versionText.innerHTML = VERSION;
+        await this.syncServerWithDeviceTime();
         let step = 0;
         while (document.readyState != 'complete') {
             console.log("on");
@@ -141,11 +154,34 @@ const Game = {
         isLoaded = true;
     },
 
-    async initData() {
+    async syncServerWithDeviceTime() {
+        try {
+            const requestStart = performance.now();
+            const serverTime = await getTime() * 1000;
+
+            const requestEnd = performance.now();
+            const latency = (requestEnd - requestStart) / 2
+            const precisePerfTime = requestEnd - latency;
+
+            Object.defineProperty(window, 'SECURE_CLOCK_ORIGIN', {
+                value: serverTime - precisePerfTime,
+                writable: false,
+                configurable: false
+            });
+
+            secureTimeOrigin = window.SECURE_CLOCK_ORIGIN;
+            console.log("Game clock succesfully sync with network!")
+        } catch (error) {
+            console.warn("Network sync failed. Returns to default value.");
+            secureTimeOrigin = Date.now() - performance.now();
+        }
+    },
+
+    initData() {
         let data = localStorage.getItem("gameState")
 
         if (!data) {
-            const time = await getTime();
+            const time = getGameTime();
             const defaultSave = VERSION + "," + time + ";" + "0,0|0,1,1|1,0,0,0,0|00000";
             localStorage.setItem("gameState", defaultSave);
             console.log("created new storage data!");
@@ -169,21 +205,51 @@ const Game = {
                 }
             }
 
-            const metaData = newData[0].split(",")
+            const metaData = newData[0].split(",");
+            const savedVersion = metaData[0];
 
-            const shouldUpgrade = metaData[0] != VERSION;
+            if (savedVersion !== VERSION) {
+                console.log(`Migrating save file from ${savedVersion} to ${VERSION}!`);
+                const VERSION_TIMELINE = ["v0.1", "v0.11"];
 
-            if (shouldUpgrade) {
-                Game.save();
-                Game.initData();
-                return;
+                const migrationSteps = {
+                    "v0.1": function() {
+                        // [PLACEHOLDER]
+                    },
+                    "v0.11": function() {
+                        // [PLACEHOLDER]
+                    }
+                };
+
+                let safeLoopCounter = 0;
+
+                while (savedVersion !== VERSION && safeLoopCounter < 10) {
+                    if (migrationSteps[savedVersion]) {
+                        migrationSteps[savedVersion]();
+                    }
+
+                    let currentIndex = VERSION_TIMELINE.indexOf(savedVersion);
+                    
+                    if (currentIndex != 1 && currentIndex < VERSION_TIMELINE.length - 1) {
+                        savedVersion = VERSION_TIMELINE[currentIndex++];
+                        console.log(`Stepping version tracker up to: ${savedVersion}`);
+                    } else {
+                        savedVersion = VERSION;
+                        break;
+                    }
+
+                    safeLoopCounter++;
+                }
+
+                const updatedMeta = VERSION + "," + getGameTime();
+                const updatedData = `${currencies.join(",")}|${stats.join(",")}|${miners.join(",")}|${achievements.join("")}`;
+                localStorage.setItem("gameState", `${updatedMeta};${updatedData}`);
             }
             const coreGameStats = newData[1].split("|");
 
             const currencies = coreGameStats[0].split(",");
             const stats = coreGameStats[1].split(",");
             const miners = coreGameStats[2].split(",");
-            console.log(coreGameStats);
             const achievements = coreGameStats[3].split("");
 
             this.currencies.rock = Number.parseInt(currencies[1], 10) || 0;
@@ -242,7 +308,7 @@ const Game = {
     },
 
     changeBulk() {
-        const tier = [1, 5, 10, 25, 50, 100, Infinity];
+        const tier = [1, 5, 10, 25, 100, Infinity];
         const i = tier.indexOf(this.bulkCount);
         this.bulkCount = tier[i === tier.length - 1 ? 0 : i + 1];
     },
@@ -325,9 +391,9 @@ const Game = {
         })
     },
 
-    async save() {
+    save() {
         let data = localStorage.getItem("gameState")
-        let time = await getTime();
+        let time = getGameTime();
 
         if (!data) {
             const defaultSave = VERSION + "," + time + ";" + "0,0|0,1,1|1,0,0,0,0|00000";
@@ -438,9 +504,22 @@ async function getTime() {
     }
 }
 
+function getGameTime() {
+    if (secureTimeOrigin === null) {
+        return Date.now();
+    }
+
+    return Math.floor(secureTimeOrigin / 1000 + (performance.now() / 1000));
+}
+
 function slopify(num) {
     if (num < 1000) return num.toString();
-    const suffixes = ["", "K", "M", "B", "T", "Qd", "Qn", "Sx"];
+    const suffixes = ["", "K", "M", "B", "T",
+        "Qd", "Qn", "Sx", "Sp", "Oc", "No",
+        "Dc", "UDc", "DDc", "TDc", "QaDc", "QiDc", "SxDc", "SpDc", "OcDc", "NoDc",
+        "Vg", "UVg", "DVg", "TVg", "QaVg", "QiVg", "SxVg", "SpVg", "OcVg", "NoVg",
+        "Tg", "UTg", "DTg", "TTg", "QaTg", "QiTg", "SxTg", "SpTg", "OcTg", "NoTg"    
+    ];
     const tier = Math.floor(Math.log10(num) / 3);
 
     const i = Math.min(tier, suffixes.length - 1);
@@ -472,14 +551,15 @@ loading_screen.addEventListener("click", async function (event){
     loading_screen.hidden = true;
     loading_save.hidden = false;
     
-    await randomSleep(750, 2000);
     Game.initData();
+    await randomSleep(1000, 2000);
+    
     heartbeatWorker.postMessage('START_TICK')
     requestAnimationFrame(Game.renderUI.bind(Game));
     loading_save.hidden = true;
 
 })
-window.addEventListener("keydown", function(event) {
+window.addEventListener("keydown", async function(event) {
     if ((event.ctrlKey || event.metaKey) && (event.key.toLowerCase() == 's')) {
         if (saveDebounce) return;
         saveDebounce = true;
@@ -487,7 +567,7 @@ window.addEventListener("keydown", function(event) {
         event.preventDefault();
         Game.save();
 
-        Sleep(1000);
+        await Sleep(1000);
         
         saveDebounce = false;
     }
@@ -500,7 +580,7 @@ document.addEventListener("contextmenu", function(event) {
     event.preventDefault();
 });
 
-document.addEventListener("visibilitychange", () => {
+document.addEventListener("visibilitychange", async function() {
     if (document.visibilityState === "hidden") {
         Game.save() // just incase.
     }
