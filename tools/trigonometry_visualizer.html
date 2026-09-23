@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Interactive Trigonometry Waves</title>
+    <style>
+        :root {
+            --bg-color: #121212;
+            --panel-bg: #1e1e1e;
+            --text-color: #ffffff;
+            --grid-color: #333333;
+            --axis-color: #777777;
+            
+            /* Vibrant Colors */
+            --sin-col: #ff4757;
+            --cos-col: #1e90ff;
+            --tan-col: #2ed573;
+            --cot-col: #ffa502;
+            --sec-col: #9c88ff;
+            --csc-col: #ff7f50;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .header {
+            text-align: center;
+            padding: 15px;
+            width: 100%;
+            background-color: var(--panel-bg);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            z-index: 10;
+        }
+
+        .header h1 { margin: 0; font-size: 1.5rem; letter-spacing: 1px; }
+        .header p { margin: 5px 0 0 0; font-size: 0.9rem; color: #aaa; }
+
+        .main-container {
+            display: flex;
+            flex-direction: row;
+            width: 100%;
+            max-width: 1400px;
+            flex: 1;
+            padding: 15px;
+            box-sizing: border-box;
+            gap: 15px;
+        }
+
+        .canvas-wrapper {
+            background-color: var(--panel-bg);
+            border-radius: 12px;
+            padding: 15px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        #circle-container { flex: 1; max-width: 450px; }
+        #wave-container { flex: 2; }
+
+        canvas {
+            background-color: #0b0c10;
+            border-radius: 8px;
+            width: 100%;
+            touch-action: none;
+            cursor: grab;
+            border: 1px solid #333;
+        }
+        canvas:active { cursor: grabbing; }
+
+        .hint { margin-top: 10px; font-size: 0.85rem; color: #888; text-align: center; }
+
+        .controls {
+            width: 100%;
+            max-width: 1400px;
+            background-color: var(--panel-bg);
+            padding: 20px;
+            box-sizing: border-box;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .top-controls {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(0,0,0,0.3);
+            padding: 8px 15px;
+            border-radius: 8px;
+        }
+
+        button {
+            background-color: #333;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: bold;
+            transition: 0.2s;
+        }
+        button:hover { background-color: #444; }
+
+        .toggles {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .toggle-btn {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 15px;
+            background-color: #2a2a2a;
+            border-radius: 20px;
+            cursor: pointer;
+            user-select: none;
+            border: 2px solid transparent;
+            transition: all 0.2s;
+            font-weight: bold;
+        }
+
+        .toggle-btn input { display: none; }
+        .toggle-btn .indicator { width: 12px; height: 12px; border-radius: 50%; }
+
+        /* Toggle Colors & Active States */
+        .toggle-btn.sin.active { border-color: var(--sin-col); color: var(--sin-col); }
+        .toggle-btn.cos.active { border-color: var(--cos-col); color: var(--cos-col); }
+        .toggle-btn.tan.active { border-color: var(--tan-col); color: var(--tan-col); }
+        .toggle-btn.cot.active { border-color: var(--cot-col); color: var(--cot-col); }
+        .toggle-btn.sec.active { border-color: var(--sec-col); color: var(--sec-col); }
+        .toggle-btn.csc.active { border-color: var(--csc-col); color: var(--csc-col); }
+
+        .toggle-btn.sin .indicator { background-color: var(--sin-col); }
+        .toggle-btn.cos .indicator { background-color: var(--cos-col); }
+        .toggle-btn.tan .indicator { background-color: var(--tan-col); }
+        .toggle-btn.cot .indicator { background-color: var(--cot-col); }
+        .toggle-btn.sec .indicator { background-color: var(--sec-col); }
+        .toggle-btn.csc .indicator { background-color: var(--csc-col); }
+        
+        .toggle-btn:not(.active) { filter: grayscale(100%); opacity: 0.5; }
+
+        @media (max-width: 850px) {
+            .main-container { flex-direction: column; }
+            #circle-container { max-width: 100%; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>Trigonometry Visualizer</h1>
+        <p>Interactive unit circle and wave graph functions</p>
+    </div>
+
+    <div class="main-container">
+        <div class="canvas-wrapper" id="circle-container">
+            <canvas id="circleCanvas"></canvas>
+            <div class="hint">🎯 Drag the dot to naturally rotate the angle</div>
+        </div>
+        
+        <div class="canvas-wrapper" id="wave-container">
+            <canvas id="waveCanvas"></canvas>
+            <div class="hint">⏪ Drag left or right to scrub the timeline ⏩</div>
+        </div>
+    </div>
+
+    <div class="controls">
+        <div class="top-controls">
+            <button id="playBtn">⏸ Pause</button>
+            <div class="slider-container">
+                <span>Animation Speed:</span>
+                <input type="range" id="speedSlider" min="0.005" max="0.08" step="0.005" value="0.015">
+            </div>
+        </div>
+
+        <div class="toggles">
+            <label class="toggle-btn sin active"><input type="checkbox" value="sin" checked><div class="indicator"></div> Sine</label>
+            <label class="toggle-btn cos active"><input type="checkbox" value="cos" checked><div class="indicator"></div> Cosine</label>
+            <label class="toggle-btn tan"><input type="checkbox" value="tan"><div class="indicator"></div> Tangent</label>
+            <label class="toggle-btn cot"><input type="checkbox" value="cot"><div class="indicator"></div> Cotangent</label>
+            <label class="toggle-btn sec"><input type="checkbox" value="sec"><div class="indicator"></div> Secant</label>
+            <label class="toggle-btn csc"><input type="checkbox" value="csc"><div class="indicator"></div> Cosecant</label>
+        </div>
+    </div>
+
+    <script>
+        const circleCanvas = document.getElementById('circleCanvas');
+        const waveCanvas = document.getElementById('waveCanvas');
+        const ctxC = circleCanvas.getContext('2d');
+        const ctxW = waveCanvas.getContext('2d');
+
+        const playBtn = document.getElementById('playBtn');
+        const speedSlider = document.getElementById('speedSlider');
+        const checkboxes = document.querySelectorAll('.toggle-btn input');
+
+        let isPlaying = true;
+        let angle = 0.5;
+        let speed = 0.015;
+
+        // Math Data
+        const trig = {
+            sin: { color: '#ff4757', show: true, fn: Math.sin },
+            cos: { color: '#1e90ff', show: true, fn: Math.cos },
+            tan: { color: '#2ed573', show: false, fn: Math.tan },
+            cot: { color: '#ffa502', show: false, fn: a => 1 / Math.tan(a) },
+            sec: { color: '#9c88ff', show: false, fn: a => 1 / Math.cos(a) },
+            csc: { color: '#ff7f50', show: false, fn: a => 1 / Math.sin(a) }
+        };
+
+        // Resize Handling
+        let cw, ww, h;
+        function resize() {
+            const ccWrap = document.getElementById('circle-container');
+            const wcWrap = document.getElementById('wave-container');
+            
+            cw = Math.max(200, ccWrap.clientWidth - 30);
+            circleCanvas.width = cw;
+            circleCanvas.height = cw;
+
+            ww = Math.max(200, wcWrap.clientWidth - 30);
+            waveCanvas.width = ww;
+            waveCanvas.height = cw; // Match height
+
+            if (!isPlaying) draw();
+        }
+
+        window.addEventListener('resize', resize);
+        resize();
+
+        // UI Listeners
+        playBtn.addEventListener('click', () => {
+            isPlaying = !isPlaying;
+            playBtn.textContent = isPlaying ? "⏸ Pause" : "▶ Play";
+        });
+
+        speedSlider.addEventListener('input', (e) => {
+            speed = parseFloat(e.target.value);
+        });
+
+        checkboxes.forEach(cb => {
+            cb.addEventListener('change', (e) => {
+                trig[e.target.value].show = e.target.checked;
+                if (e.target.checked) e.target.parentElement.classList.add('active');
+                else e.target.parentElement.classList.remove('active');
+                if (!isPlaying) draw();
+            });
+        });
+
+        // --- INTERACTIVITY LOGIC ---
+        let isDraggingCircle = false;
+        let isDraggingWave = false;
+        let lastDragX = 0;
+        let prevAtan = null;
+
+        function getPointer(e, cvs) {
+            let rect = cvs.getBoundingClientRect();
+            let x = e.touches ? e.touches[0].clientX : e.clientX;
+            let y = e.touches ? e.touches[0].clientY : e.clientY;
+            return { x: x - rect.left, y: y - rect.top };
+        }
+
+        function startCircleDrag(e) {
+            e.preventDefault();
+            isDraggingCircle = true;
+            let pt = getPointer(e, circleCanvas);
+            prevAtan = Math.atan2((cw/2) - pt.y, pt.x - (cw/2));
+        }
+
+        function moveCircleDrag(e) {
+            if (!isDraggingCircle) return;
+            e.preventDefault();
+            let pt = getPointer(e, circleCanvas);
+            
+            let currentAtan = Math.atan2((cw/2) - pt.y, pt.x - (cw/2));
+            let delta = currentAtan - prevAtan;
+            
+            if (delta > Math.PI) delta -= 2 * Math.PI;
+            if (delta < -Math.PI) delta += 2 * Math.PI;
+
+            angle += delta;
+            prevAtan = currentAtan;
+            if (!isPlaying) draw();
+        }
+
+        function startWaveDrag(e) {
+            e.preventDefault();
+            isDraggingWave = true;
+            lastDragX = getPointer(e, waveCanvas).x;
+        }
+
+        function moveWaveDrag(e) {
+            if (!isDraggingWave) return;
+            e.preventDefault();
+            let x = getPointer(e, waveCanvas).x;
+            let dx = x - lastDragX;
+            
+            let pixelsPerRadian = ww / (4 * Math.PI); 
+            angle -= dx / pixelsPerRadian; 
+            
+            lastDragX = x;
+            if (!isPlaying) draw();
+        }
+
+        function endDrag() {
+            isDraggingCircle = false;
+            isDraggingWave = false;
+        }
+
+        circleCanvas.addEventListener('mousedown', startCircleDrag);
+        window.addEventListener('mousemove', moveCircleDrag);
+        waveCanvas.addEventListener('mousedown', startWaveDrag);
+        window.addEventListener('mousemove', moveWaveDrag);
+        window.addEventListener('mouseup', endDrag);
+
+        circleCanvas.addEventListener('touchstart', startCircleDrag, {passive: false});
+        window.addEventListener('touchmove', moveCircleDrag, {passive: false});
+        waveCanvas.addEventListener('touchstart', startWaveDrag, {passive: false});
+        window.addEventListener('touchmove', moveWaveDrag, {passive: false});
+        window.addEventListener('touchend', endDrag);
+
+        // --- DRAWING HELPERS ---
+        function drawLine(ctx, x1, y1, x2, y2, color, width, dash = []) {
+            ctx.beginPath();
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x2, y2);
+            ctx.strokeStyle = color;
+            ctx.lineWidth = width;
+            if (dash.length) ctx.setLineDash(dash);
+            ctx.stroke();
+            ctx.setLineDash([]);
+        }
+
+        function drawFloatingLabel(ctx, text, x, y, color) {
+            ctx.font = "bold 13px sans-serif";
+            let width = ctx.measureText(text).width;
+            let padX = 8, padY = 6;
+            
+            let rectX = x - padX;
+            let rectY = y - 12 - padY;
+            let rectW = width + (padX * 2);
+            let rectH = 14 + (padY * 2);
+            let r = 6;
+
+            ctx.fillStyle = 'rgba(18, 18, 18, 0.85)';
+            ctx.beginPath();
+            ctx.moveTo(rectX + r, rectY);
+            ctx.lineTo(rectX + rectW - r, rectY);
+            ctx.quadraticCurveTo(rectX + rectW, rectY, rectX + rectW, rectY + r);
+            ctx.lineTo(rectX + rectW, rectY + rectH - r);
+            ctx.quadraticCurveTo(rectX + rectW, rectY + rectH, rectX + rectW - r, rectY + rectH);
+            ctx.lineTo(rectX + r, rectY + rectH);
+            ctx.quadraticCurveTo(rectX, rectY + rectH, rectX, rectY + rectH - r);
+            ctx.lineTo(rectX, rectY + r);
+            ctx.quadraticCurveTo(rectX, rectY, rectX + r, rectY);
+            ctx.closePath();
+            ctx.fill();
+            
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            ctx.fillStyle = color;
+            ctx.fillText(text, x, y);
+        }
+
+        function getDeg(a) {
+            let res = a % (2 * Math.PI);
+            if (res < 0) res += 2 * Math.PI;
+            return (res * (180 / Math.PI)).toFixed(1);
+        }
+
+        // --- MAIN GRAPHICS ---
+        function drawCircleCanvas() {
+            ctxC.clearRect(0, 0, cw, cw);
+            const cx = cw / 2;
+            const cy = cw / 2;
+            const r = cw * 0.35;
+
+            // Grid
+            ctxC.strokeStyle = '#333';
+            ctxC.lineWidth = 1;
+            ctxC.beginPath();
+            for(let i = -3; i <= 3; i++) {
+                ctxC.moveTo(cx + i*(r/2), 0); ctxC.lineTo(cx + i*(r/2), cw);
+                ctxC.moveTo(0, cy + i*(r/2)); ctxC.lineTo(cw, cy + i*(r/2));
+            }
+            ctxC.stroke();
+
+            // Axes
+            drawLine(ctxC, 0, cy, cw, cy, '#777', 2);
+            drawLine(ctxC, cx, 0, cx, cw, '#777', 2);
+
+            // Unit Circle
+            ctxC.beginPath();
+            ctxC.arc(cx, cy, r, 0, Math.PI * 2);
+            ctxC.strokeStyle = '#555';
+            ctxC.lineWidth = 2;
+            ctxC.stroke();
+
+            // Math Values
+            const pX = cx + Math.cos(angle) * r;
+            const pY = cy - Math.sin(angle) * r;
+            let t = Math.tan(angle);
+            let ct = 1 / t;
+            let secVal = 1 / Math.cos(angle);
+            let cscVal = 1 / Math.sin(angle);
+
+            // Colored Arc Angle
+            ctxC.beginPath();
+            ctxC.moveTo(cx, cy);
+            ctxC.arc(cx, cy, r * 0.25, 0, -angle, angle > 0); 
+            ctxC.fillStyle = 'rgba(255, 255, 255, 0.15)';
+            ctxC.fill();
+
+            // Auxiliary Context Lines
+            if (trig.tan.show || trig.sec.show) drawLine(ctxC, cx + r, 0, cx + r, cw, '#444', 1.5, [4,4]);
+            if (trig.cot.show || trig.csc.show) drawLine(ctxC, 0, cy - r, cw, cy - r, '#444', 1.5, [4,4]);
+
+            // Draw Functions Geometry
+            if (trig.sec.show && Math.abs(t) < 50) drawLine(ctxC, cx, cy, cx + r, cy - t * r, trig.sec.color, 4);
+            if (trig.csc.show && Math.abs(ct) < 50) drawLine(ctxC, cx, cy, cx + ct * r, cy - r, trig.csc.color, 4);
+            if (trig.tan.show && Math.abs(t) < 50) drawLine(ctxC, cx + r, cy, cx + r, cy - t * r, trig.tan.color, 4);
+            if (trig.cot.show && Math.abs(ct) < 50) drawLine(ctxC, cx, cy - r, cx + ct * r, cy - r, trig.cot.color, 4);
+            
+            if (trig.cos.show) drawLine(ctxC, cx, cy, pX, cy, trig.cos.color, 4);
+            if (trig.sin.show) drawLine(ctxC, pX, cy, pX, pY, trig.sin.color, 4);
+
+            // Hypotenuse
+            drawLine(ctxC, cx, cy, pX, pY, '#ffffff', 2);
+
+            // Dot
+            ctxC.beginPath();
+            ctxC.arc(pX, pY, 7, 0, Math.PI * 2);
+            ctxC.fillStyle = '#ffffff';
+            ctxC.fill();
+            ctxC.strokeStyle = '#000';
+            ctxC.lineWidth = 2;
+            ctxC.stroke();
+
+            // --- ALL FLOATING LABELS ON CIRCLE ---
+            drawFloatingLabel(ctxC, `θ = ${getDeg(angle)}°`, pX + 15, pY - 15, '#fff');
+
+            if (trig.sin.show) drawFloatingLabel(ctxC, `sin = ${Math.sin(angle).toFixed(2)}`, pX + 10, cy - (Math.sin(angle)*r)/2, trig.sin.color);
+            if (trig.cos.show) drawFloatingLabel(ctxC, `cos = ${Math.cos(angle).toFixed(2)}`, cx + (Math.cos(angle)*r)/2, cy + 25, trig.cos.color);
+            
+            // Placed at mathematical midpoints with slight offset
+            if (trig.tan.show && Math.abs(t) < 50) drawFloatingLabel(ctxC, `tan = ${t.toFixed(2)}`, cx + r + 20, cy - (t*r)/2, trig.tan.color);
+            if (trig.cot.show && Math.abs(ct) < 50) drawFloatingLabel(ctxC, `cot = ${ct.toFixed(2)}`, cx + (ct*r)/2, cy - r - 20, trig.cot.color);
+            if (trig.sec.show && Math.abs(t) < 50) drawFloatingLabel(ctxC, `sec = ${secVal.toFixed(2)}`, cx + r/2, cy - (t*r)/2 - 20, trig.sec.color);
+            if (trig.csc.show && Math.abs(ct) < 50) drawFloatingLabel(ctxC, `csc = ${cscVal.toFixed(2)}`, cx + (ct*r)/2, cy - r/2 - 20, trig.csc.color);
+        }
+
+        function drawWaveCanvas() {
+            ctxW.clearRect(0, 0, ww, cw);
+            const cy = cw / 2;
+            const r = cw * 0.35;
+            const pixelsPerRadian = ww / (4 * Math.PI); 
+            
+            // Grid and X-Axis Text Labels
+            ctxW.strokeStyle = '#333';
+            ctxW.lineWidth = 1;
+            ctxW.beginPath();
+            
+            // Y Grid lines
+            for(let i = -1; i <= 1; i++) {
+                ctxW.moveTo(0, cy + i*r); ctxW.lineTo(ww, cy + i*r);
+            }
+            
+            // X Grid lines & X-Axis Labels (Multiples of Pi/2)
+            ctxW.fillStyle = '#aaa';
+            ctxW.font = "12px sans-serif";
+            ctxW.textAlign = "center";
+
+            let startAngle = angle - (4 * Math.PI);
+            let startGrid = Math.floor(startAngle / (Math.PI/2)) * (Math.PI/2);
+            
+            for (let a = startGrid; a <= angle + (Math.PI/2); a += Math.PI/2) {
+                let px = ww - ((angle - a) * pixelsPerRadian);
+                
+                // Draw vertical grid line
+                ctxW.moveTo(px, 0); ctxW.lineTo(px, cw);
+                
+                // Generate clean string for X-Axis text
+                let piMultiple = Math.round(a / (Math.PI / 2));
+                let label = "";
+                if (piMultiple === 0) label = "0";
+                else if (piMultiple === 1) label = "π/2";
+                else if (piMultiple === 2) label = "π";
+                else if (piMultiple === 3) label = "3π/2";
+                else if (piMultiple === 4) label = "2π";
+                else if (piMultiple === -1) label = "-π/2";
+                else if (piMultiple === -2) label = "-π";
+                else if (piMultiple === -3) label = "-3π/2";
+                else if (piMultiple === -4) label = "-2π";
+                else if (piMultiple % 2 === 0) label = `${piMultiple/2}π`;
+                else label = `${piMultiple}π/2`;
+
+                // Render the text just below the center axis
+                if (px > 0 && px < ww) {
+                    ctxW.fillText(label, px, cy + 18);
+                }
+            }
+            ctxW.stroke();
+
+            // Main Axis Line
+            drawLine(ctxW, 0, cy, ww, cy, '#777', 2);
+
+            // Ticker-Tape Projection Line (Matches Sine height visually)
+            if (trig.sin.show) {
+                let sinY = cy - Math.sin(angle) * r;
+                drawLine(ctxW, 0, sinY, ww, sinY, 'rgba(255, 71, 87, 0.4)', 2, [5, 5]);
+            }
+
+            // Draw Selected Waves
+            for (let key in trig) {
+                if (!trig[key].show) continue; 
+                
+                ctxW.beginPath();
+                ctxW.strokeStyle = trig[key].color;
+                ctxW.lineWidth = 3;
+                
+                let prevY = null;
+                for (let x = 0; x <= ww; x += 3) {
+                    let histAngle = angle - (x / pixelsPerRadian);
+                    let val = trig[key].fn(histAngle);
+                    let py = cy - val * r;
+
+                    if (prevY === null || Math.abs(val - prevY) > 5) {
+                        ctxW.moveTo(x, py); // Break line to prevent infinite vertical asymptote
+                    } else {
+                        ctxW.lineTo(x, py);
+                    }
+                    prevY = val;
+                }
+                ctxW.stroke();
+
+                // Floating Leading Dot and Label on Wave
+                let currentVal = trig[key].fn(angle);
+                if (Math.abs(currentVal) < 50) {
+                    let dotY = cy - currentVal * r;
+                    
+                    ctxW.beginPath();
+                    ctxW.arc(8, dotY, 5, 0, Math.PI * 2);
+                    ctxW.fillStyle = '#fff';
+                    ctxW.fill();
+                    ctxW.strokeStyle = trig[key].color;
+                    ctxW.lineWidth = 2;
+                    ctxW.stroke();
+
+                    let displayVal = Math.abs(currentVal) > 1000 ? '∞' : currentVal.toFixed(2);
+                    drawFloatingLabel(ctxW, `${key} = ${displayVal}`, 25, dotY - 10, trig[key].color);
+                }
+            }
+        }
+
+        function draw() {
+            drawCircleCanvas();
+            drawWaveCanvas();
+        }
+
+        function animate() {
+            if (isPlaying && !isDraggingCircle && !isDraggingWave) {
+                angle += speed;
+            }
+            draw();
+            requestAnimationFrame(animate);
+        }
+
+        // Initialize
+        draw();
+        animate();
+    </script>
+</body>
+</html>
