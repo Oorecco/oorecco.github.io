@@ -3,14 +3,14 @@
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>Untitled Incremental Game</title>
+        <title>Rock Incremental</title>
         <link rel="stylesheet" href="style.css">
-        <script src="https://cdn.jsdelivr.net/npm/break_infinity.js@2"></script>
+
+        <script src="https://google.com" async defer></script>
     </head>
     <body>
         <div id="loading-screen">
             <p id="loading-text">Loading</p>
-            <p id="click-load">Click anything to continue.</p>
             <p id="version">vx.xx</p>
         </div>
         <div id="loading-save" hidden="true">
@@ -33,6 +33,44 @@
             
         </div>
 
+        <div id="achievements-ui" hidden="true">
+            <p id="ach-name">ach name</p>
+            <p id="ach-desc">ach desc</p>
+            <p id="ach-reward">reward</p>
+        </div>
+
+        <div id="settings-area">
+            <br>
+            <br>
+            <br>
+
+            <label id="autosave-interval-label" class="labels">Autosave interval: 30s</label>
+            <br>    
+            <input type="range" id="autosave-setting" name="autosave-interval" oninput="document.getElementById('autosave-interval-label').innerHTML = `Autosave interval: ${this.value}s`" onchange="Game.changeSetting('autosave_interval', Number.parseInt(this.value, 10))" min="10" max="60" value="30" step="5">
+            <br>
+            <label id="notation-label" class="labels">Notation type</label>
+            <br>
+            <select name="notations" onchange="Game.changeSetting('notations', this.value)" id="notations">
+                <option value="normal">Normal</option>
+                <option value="scientific">Scientific</option>
+                <option value="engineering">Engineering</option>
+            </select>
+            <br>
+            <br>
+            <button id="music-toggle" onclick="Game.changeSetting('music_toggle')">Music: on</button>
+            <button onclick="Game.save();">Local Save</button>
+            <br>
+            <button onclick="Game.saveToCloud(await Game.parseSaveFile());">Cloud Save</button>
+            <br>
+            <button onclick="Game.loginWithGoogle();">Login with Google</button>
+            <br>
+            <button onclick="Game.logoutWithGoogle();">Logout with Google</button>
+            <br>
+            <p id="status-text" hidden="true">lorem ipsum</p>
+            <p id="login-status">isLogin = false;</p>
+        </div>
+
+        <script src="../../utils/js/break_infinity.js"></script>
         <script src="js/main.js"></script>
     </body>
 </html>

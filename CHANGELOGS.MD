@@ -33,3 +33,14 @@ Update 4 [v2026.9.13]:
 Update 5 [v2026.9.20]:
 - A lot of changes in rock incremental.
 - More changelogs on the diff source code.
+
+Update 6 [v2026.9.23]:
+- Added trigonometry_visualizer on the tools.
+
+Update 7 [v2026.10.27]:
+- Added Google's OAuth.
+- Added break_infinity module [to handle ENORMOUS number].
+- Added about me.
+- Added a new game named Sawitron.
+- Reworked on the Game [Rock incremental to support the new lib, and etc..].
+- More changelogs on the diff source code.

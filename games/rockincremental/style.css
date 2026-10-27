@@ -1,9 +1,16 @@
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+
 body {
     user-select: none;
     -webkit-touch-callout: none;
     overflow: hidden;
 
-    background-color: #121212;
+    margin: 0;
+    padding: 0;
+
+    min-height: 100vh;
+    background-color: #161616;
 }
 #rock-counter {
     color: white;
@@ -21,26 +28,37 @@ body {
 }
 
 #loading-screen {
+    display: flex;
+    justify-content: center; /* horizontal */
+    align-items: center;     /* vertical */
+
     position: fixed;
-    width: 100%;
-    height: 100%;
-    background-color: rgb(157, 160, 157);
+    inset: 0;
+    margin: 0;
+    text-align: center;
+    
+    background-color: rgb(57, 58, 57);
     z-index: 999999999;
 }
 
 #loading-save {
+    display: flex;
+    justify-content: center; /* horizontal */
+    align-items: center;     /* vertical */
+
     position: fixed;
-    width: 100%;
-    height: 100%;
+    inset: 0;
+    margin: 0;
+    text-align: center;
     background-color: rgba(10, 10, 10, 0.63);
     z-index: 999999999;
 }
 
 #loading-text {
     position: fixed;
-    left: 45%;
-    top: 45%;
-    font-size: 200%;
+    font-size: 200%;   
+    margin: 0; 
+    
     color: white;
     text-shadow: 2px 2px 0 #000;
     font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -48,19 +66,8 @@ body {
 
 #save-text {
     position: fixed;
-    left: 38%;
-    top: 45%;
-    font-size: 120%;
-    color: white;
-    text-shadow: 2px 2px 0 #000;
-    font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-}
 
-#click-load {
-    position: fixed;
-    left: 34%;
-    top: 75%;
-    font-size: 125%;
+    font-size: 140%;
     color: white;
     text-shadow: 2px 2px 0 #000;
     font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -69,10 +76,10 @@ body {
 #version {
     position: fixed;
     top: 90%;
-    left: 3%;
+    left: 2%;
     font-size: 125%;
-    color: white;
-    text-shadow: 2px 2px 0 #000;
+    color: rgba(255, 255, 255, 0.15);
+    text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.5);
     font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 #upgrade-helpers {
@@ -84,4 +91,35 @@ body {
 
     padding-left: 70px;
     gap: 5px;
+}
+
+#status-text {
+    position: fixed;
+    top: 90%;
+    left: 85%;
+    font-size: 125%;
+    color: rgba(255, 255, 255, 1);
+    text-shadow: 2px 2px 0 rgba(0, 0, 0, 1);
+    font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+#login-status {
+    position: fixed;
+    top: 85%;
+    left: 91%;
+    font-size: 90%;
+    color: rgba(255, 255, 255, 1);
+    text-shadow: 2px 2px 0 rgba(0, 0, 0, 1);
+    font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.labels {
+   font-size: 80%;
+    color: white; 
+    text-shadow: 2px 2px 0 #000; 
+    font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+}
+
+button {
+    box-shadow: 2px 2px 0 #555555;
 }

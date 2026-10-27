@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <title>Authenticating..</title>
+    </head>
+    <body>
+        <div>
+            <h2 id="auth-status">Logging you in, please wait..</h2>
+        </div>
+
+        <script>
+            const COOKIE_PATH = window.location.pathname.replace(/[^/]*$/, '');
+
+            // HELPER FUNCTIONS
+            function setCookie(name, value, maxAgeSeconds) {
+                document.cookie = name + '=' + encodeURIComponent(value) + 
+                    '; Max-Age=' + Math.max(0, Math.floor(maxAgeSeconds)) +
+                    '; Path=' + COOKIE_PATH +
+                    '; SameSite=Lax' + 
+                    'Secure';
+            }
+
+            function getCookie(name) {
+                const match = document.cookie.split('; ').find(c => c.startsWith(name + "="));
+                return match ? decodeURIComponent(match.substring(name.length + 1)) : null;
+            }
+
+            function deleteCookie(name) {
+                document.cookie = name + '=; Max-Age=0; Path=' + COOKIE_PATH;
+            }
+
+            (function() {
+                const authText = document.getElementById("auth-status");
+                const hash = window.location.hash;
+
+                if (!hash) {
+                    authText.innerHTML = "Invalid auth session.";
+                    return;
+                }
+
+                const params = new URLSearchParams(hash.substring(1));
+                const token = params.get('access_token');
+                const error = params.get('error');
+                const state = params.get('state');
+                const expiresIn = params.get('expires_in')
+
+                window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
+                
+                if (window.opener) {
+                    window.opener.postMessage({
+                        type: 'OAUTH_SUCCESS',
+                        accessToken: token,
+                        state: state,
+                        error: error,
+                        expires_in: expiresIn
+                    }, window.location.origin);
+                }
+                window.close();
+            })();
+        </script>
+    </body>
+</html>
